@@ -13,6 +13,7 @@ That's a sample application to demonstrate working with Oraclize in Ethereum Stu
   }
 },
 ```
+
 3. Open a dialog of contract `Contract` and call `update()` with value 100000000000000000 in advanced parameters.
 
 You will see requests and response in Oraclize Panel and contract logs in Ethereum Console.
