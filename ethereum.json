@@ -1,6 +1,8 @@
 {
   "contracts": "contracts",
   
+  "deploy": ["Contract"],
+  
   "plugins": {
     "oraclize": {
       "networkID": 161,
