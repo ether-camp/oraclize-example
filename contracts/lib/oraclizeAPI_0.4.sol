@@ -1,6 +1,7 @@
 // <ORACLIZE_API>
 /*
-Copyright (c) 2015-2016 Oraclize srl, Thomas Bertani
+Copyright (c) 2015-2016 Oraclize SRL
+Copyright (c) 2016 Oraclize LTD
 
 
 
@@ -27,100 +28,109 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-import "lib/std.sol";
+pragma solidity ^0.4.0;
 
-contract OraclizeI is abstract {
+contract OraclizeI {
     address public cbAddress;
-    function query(uint _timestamp, string _datasource, string _arg) returns (bytes32 _id);
-    function query_withGasLimit(uint _timestamp, string _datasource, string _arg, uint _gaslimit) returns (bytes32 _id);
-    function query2(uint _timestamp, string _datasource, string _arg1, string _arg2) returns (bytes32 _id);
-    function query2_withGasLimit(uint _timestamp, string _datasource, string _arg1, string _arg2, uint _gaslimit) returns (bytes32 _id);
+    function query(uint _timestamp, string _datasource, string _arg) payable returns (bytes32 _id);
+    function query_withGasLimit(uint _timestamp, string _datasource, string _arg, uint _gaslimit) payable returns (bytes32 _id);
+    function query2(uint _timestamp, string _datasource, string _arg1, string _arg2) payable returns (bytes32 _id);
+    function query2_withGasLimit(uint _timestamp, string _datasource, string _arg1, string _arg2, uint _gaslimit) payable returns (bytes32 _id);
     function getPrice(string _datasource) returns (uint _dsprice);
     function getPrice(string _datasource, uint gaslimit) returns (uint _dsprice);
     function useCoupon(string _coupon);
     function setProofType(byte _proofType);
+    function setCustomGasPrice(uint _gasPrice);
 }
-contract OraclizeAddrResolverI is abstract {
+contract OraclizeAddrResolverI {
     function getAddress() returns (address _addr);
 }
-contract usingOraclize is abstract {
+contract usingOraclize {
     uint constant day = 60*60*24;
     uint constant week = 60*60*24*7;
     uint constant month = 60*60*24*30;
     byte constant proofType_NONE = 0x00;
     byte constant proofType_TLSNotary = 0x10;
     byte constant proofStorage_IPFS = 0x01;
+    uint8 constant networkID_auto = 0;
     uint8 constant networkID_mainnet = 1;
     uint8 constant networkID_testnet = 2;
     uint8 constant networkID_morden = 2;
     uint8 constant networkID_consensys = 161;
-    
-    OraclizeAddrResolverI OAR = OraclizeAddrResolverI(0x1d11e5eae3112dbd44f99266872ff1d07c77dce8);
+
+    OraclizeAddrResolverI OAR;
     
     OraclizeI oraclize;
     modifier oraclizeAPI {
+        if(address(OAR)==0) oraclize_setNetwork(networkID_auto);
         oraclize = OraclizeI(OAR.getAddress());
-        _
+        _;
     }
     modifier coupon(string code){
         oraclize = OraclizeI(OAR.getAddress());
         oraclize.useCoupon(code);
-        _
+        _;
     }
+
     function oraclize_setNetwork(uint8 networkID) internal returns(bool){
-        if (networkID == networkID_mainnet) OAR = OraclizeAddrResolverI(0x1d11e5eae3112dbd44f99266872ff1d07c77dce8);
-        else if (networkID == networkID_testnet) OAR = OraclizeAddrResolverI(0x0ae06d5934fd75d214951eb96633fbd7f9262a7c);
-        else if (networkID == networkID_consensys) OAR = OraclizeAddrResolverI(0x20e12a1f859b3feae5fb2a0a32c18f5a65555bbf);
-        else return false;
-        return true;
+        if (getCodeSize(0x1d3b2638a7cc9f2cb3d298a3da7a90b67e5506ed)>0){
+            OAR = OraclizeAddrResolverI(0x1d3b2638a7cc9f2cb3d298a3da7a90b67e5506ed);
+            return true;
+        }
+        if (getCodeSize(0x9efbea6358bed926b293d2ce63a730d6d98d43dd)>0){
+            OAR = OraclizeAddrResolverI(0x9efbea6358bed926b293d2ce63a730d6d98d43dd);
+            return true;
+        }
+        if (getCodeSize(0x20e12a1f859b3feae5fb2a0a32c18f5a65555bbf)>0){
+            OAR = OraclizeAddrResolverI(0x20e12a1f859b3feae5fb2a0a32c18f5a65555bbf);
+            return true;
+        }
+        if (getCodeSize(0x9a1d6e5c6c8d081ac45c6af98b74a42442afba60)>0){
+            OAR = OraclizeAddrResolverI(0x9a1d6e5c6c8d081ac45c6af98b74a42442afba60);
+            return true;
+        }
+        return false;
     }
+    
     function oraclize_query(string datasource, string arg) oraclizeAPI internal returns (bytes32 id){
         uint price = oraclize.getPrice(datasource);
         if (price > 1 ether + tx.gasprice*200000) return 0; // unexpectedly high price
-        if (price > this.balance) log2("oraclize", "oraclize_error", "not_enough_funds");
-        else return oraclize.query.value(price)(0, datasource, arg);
+        return oraclize.query.value(price)(0, datasource, arg);
     }
     function oraclize_query(uint timestamp, string datasource, string arg) oraclizeAPI internal returns (bytes32 id){
         uint price = oraclize.getPrice(datasource);
         if (price > 1 ether + tx.gasprice*200000) return 0; // unexpectedly high price
-        if (price > this.balance) log2("oraclize", "oraclize_error", "not_enough_funds");
-        else return oraclize.query.value(price)(timestamp, datasource, arg);
+        return oraclize.query.value(price)(timestamp, datasource, arg);
     }
     function oraclize_query(uint timestamp, string datasource, string arg, uint gaslimit) oraclizeAPI internal returns (bytes32 id){
         uint price = oraclize.getPrice(datasource, gaslimit);
         if (price > 1 ether + tx.gasprice*gaslimit) return 0; // unexpectedly high price
-        if (price > this.balance) log2("oraclize", "oraclize_error", "not_enough_funds");
-        else return oraclize.query_withGasLimit.value(price)(timestamp, datasource, arg, gaslimit);
+        return oraclize.query_withGasLimit.value(price)(timestamp, datasource, arg, gaslimit);
     }
     function oraclize_query(string datasource, string arg, uint gaslimit) oraclizeAPI internal returns (bytes32 id){
         uint price = oraclize.getPrice(datasource, gaslimit);
         if (price > 1 ether + tx.gasprice*gaslimit) return 0; // unexpectedly high price
-        if (price > this.balance) log2("oraclize", "oraclize_error", "not_enough_funds");
-        else return oraclize.query_withGasLimit.value(price)(0, datasource, arg, gaslimit);
+        return oraclize.query_withGasLimit.value(price)(0, datasource, arg, gaslimit);
     }
     function oraclize_query(string datasource, string arg1, string arg2) oraclizeAPI internal returns (bytes32 id){
         uint price = oraclize.getPrice(datasource);
         if (price > 1 ether + tx.gasprice*200000) return 0; // unexpectedly high price
-        if (price > this.balance) log2("oraclize", "oraclize_error", "not_enough_funds");
-        else return oraclize.query2.value(price)(0, datasource, arg1, arg2);
+        return oraclize.query2.value(price)(0, datasource, arg1, arg2);
     }
     function oraclize_query(uint timestamp, string datasource, string arg1, string arg2) oraclizeAPI internal returns (bytes32 id){
         uint price = oraclize.getPrice(datasource);
         if (price > 1 ether + tx.gasprice*200000) return 0; // unexpectedly high price
-        if (price > this.balance) log2("oraclize", "oraclize_error", "not_enough_funds");
-        else return oraclize.query2.value(price)(timestamp, datasource, arg1, arg2);
+        return oraclize.query2.value(price)(timestamp, datasource, arg1, arg2);
     }
     function oraclize_query(uint timestamp, string datasource, string arg1, string arg2, uint gaslimit) oraclizeAPI internal returns (bytes32 id){
         uint price = oraclize.getPrice(datasource, gaslimit);
         if (price > 1 ether + tx.gasprice*gaslimit) return 0; // unexpectedly high price
-        if (price > this.balance) log2("oraclize", "oraclize_error", "not_enough_funds");
-        else return oraclize.query2_withGasLimit.value(price)(timestamp, datasource, arg1, arg2, gaslimit);
+        return oraclize.query2_withGasLimit.value(price)(timestamp, datasource, arg1, arg2, gaslimit);
     }
     function oraclize_query(string datasource, string arg1, string arg2, uint gaslimit) oraclizeAPI internal returns (bytes32 id){
         uint price = oraclize.getPrice(datasource, gaslimit);
         if (price > 1 ether + tx.gasprice*gaslimit) return 0; // unexpectedly high price
-        if (price > this.balance) log2("oraclize", "oraclize_error", "not_enough_funds");
-        else return oraclize.query2_withGasLimit.value(price)(0, datasource, arg1, arg2, gaslimit);
+        return oraclize.query2_withGasLimit.value(price)(0, datasource, arg1, arg2, gaslimit);
     }
     function oraclize_cbAddress() oraclizeAPI internal returns (address){
         return oraclize.cbAddress();
@@ -128,7 +138,18 @@ contract usingOraclize is abstract {
     function oraclize_setProof(byte proofP) oraclizeAPI internal {
         return oraclize.setProofType(proofP);
     }
+    function oraclize_setCustomGasPrice(uint gasPrice) oraclizeAPI internal {
+        return oraclize.setCustomGasPrice(gasPrice);
+    }    
+    function oraclize_setConfig(bytes config) oraclizeAPI internal {
+        //return oraclize.setConfig(config);
+    }
 
+    function getCodeSize(address _addr) constant internal returns(uint _size) {
+        assembly {
+            _size := extcodesize(_addr)
+        }
+    }
 
 
     function parseAddr(string _a) internal returns (address){
@@ -170,30 +191,30 @@ contract usingOraclize is abstract {
 
     function indexOf(string _haystack, string _needle) internal returns (int)
     {
-    	bytes memory h = bytes(_haystack);
-    	bytes memory n = bytes(_needle);
-    	if(h.length < 1 || n.length < 1 || (n.length > h.length)) 
-    		return -1;
-    	else if(h.length > (2**128 -1))
-    		return -1;									
-    	else
-    	{
-    		uint subindex = 0;
-    		for (uint i = 0; i < h.length; i ++)
-    		{
-    			if (h[i] == n[0])
-    			{
-    				subindex = 1;
-    				while(subindex < n.length && (i + subindex) < h.length && h[i + subindex] == n[subindex])
-    				{
-    					subindex++;
-    				}	
-    				if(subindex == n.length)
-    					return int(i);
-    			}
-    		}
-    		return -1;
-    	}	
+        bytes memory h = bytes(_haystack);
+        bytes memory n = bytes(_needle);
+        if(h.length < 1 || n.length < 1 || (n.length > h.length)) 
+            return -1;
+        else if(h.length > (2**128 -1))
+            return -1;                                  
+        else
+        {
+            uint subindex = 0;
+            for (uint i = 0; i < h.length; i ++)
+            {
+                if (h[i] == n[0])
+                {
+                    subindex = 1;
+                    while(subindex < n.length && (i + subindex) < h.length && h[i + subindex] == n[subindex])
+                    {
+                        subindex++;
+                    }   
+                    if(subindex == n.length)
+                        return int(i);
+                }
+            }
+            return -1;
+        }   
     }
 
     function strConcat(string _a, string _b, string _c, string _d, string _e) internal returns (string){
@@ -245,10 +266,10 @@ contract usingOraclize is abstract {
                 mint += uint(bresult[i]) - 48;
             } else if (bresult[i] == 46) decimals = true;
         }
+        if (_b > 0) mint *= 10**_b;
         return mint;
     }
     
-
 
 }
 // </ORACLIZE_API>

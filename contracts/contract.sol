@@ -1,7 +1,9 @@
-import "lib/std.sol";
-import "lib/oraclizeAPI.sol";
+pragma solidity ^0.4.2;
 
-contract Contract is named("Contract"), mortal, usingOraclize {
+import "lib/std.sol";
+import "lib/oraclizeAPI_0.4.sol";
+
+contract Contract is mortal, usingOraclize {
 
   string public ETHXBT;
 
@@ -9,7 +11,7 @@ contract Contract is named("Contract"), mortal, usingOraclize {
     oraclize_setNetwork(networkID_consensys);
   }
   
-  function __callback(bytes32 myid, string result) {
+  function __callback(bytes32 myid, string result) payable {
     log0('callback');
     if (msg.sender != oraclize_cbAddress()) throw;
     log0('set result');
@@ -17,7 +19,7 @@ contract Contract is named("Contract"), mortal, usingOraclize {
     update();
   }
   
-  function update() {
+  function update() payable {
     oraclize_query(10, "URL", "json(https://poloniex.com/public?command=returnTicker).BTC_ETH.last");
   }
 }
