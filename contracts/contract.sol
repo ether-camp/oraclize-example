@@ -11,7 +11,7 @@ contract Contract is mortal, usingOraclize {
     oraclize_setNetwork(networkID_consensys);
   }
   
-  function __callback(bytes32 myid, string result) payable {
+  function __callback(bytes32 myid, string result) {
     log0('callback');
     if (msg.sender != oraclize_cbAddress()) throw;
     log0('set result');
