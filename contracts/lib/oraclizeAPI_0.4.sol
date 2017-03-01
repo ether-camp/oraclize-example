@@ -28,7 +28,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.0;//please import oraclizeAPI_pre0.4.sol when solidity < 0.4.0
 
 contract OraclizeI {
     address public cbAddress;
@@ -40,6 +40,7 @@ contract OraclizeI {
     function getPrice(string _datasource, uint gaslimit) returns (uint _dsprice);
     function useCoupon(string _coupon);
     function setProofType(byte _proofType);
+    function setConfig(bytes32 _config);
     function setCustomGasPrice(uint _gasPrice);
 }
 contract OraclizeAddrResolverI {
@@ -62,7 +63,7 @@ contract usingOraclize {
     
     OraclizeI oraclize;
     modifier oraclizeAPI {
-        if(address(OAR)==0) oraclize_setNetwork(networkID_auto);
+        if((address(OAR)==0)||(getCodeSize(address(OAR))==0)) oraclize_setNetwork(networkID_auto);
         oraclize = OraclizeI(OAR.getAddress());
         _;
     }
@@ -73,23 +74,40 @@ contract usingOraclize {
     }
 
     function oraclize_setNetwork(uint8 networkID) internal returns(bool){
-        if (getCodeSize(0x1d3b2638a7cc9f2cb3d298a3da7a90b67e5506ed)>0){
-            OAR = OraclizeAddrResolverI(0x1d3b2638a7cc9f2cb3d298a3da7a90b67e5506ed);
+        if (getCodeSize(0x1d3B2638a7cC9f2CB3D298A3DA7a90B67E5506ed)>0){ //mainnet
+            OAR = OraclizeAddrResolverI(0x1d3B2638a7cC9f2CB3D298A3DA7a90B67E5506ed);
             return true;
         }
-        if (getCodeSize(0x9efbea6358bed926b293d2ce63a730d6d98d43dd)>0){
-            OAR = OraclizeAddrResolverI(0x9efbea6358bed926b293d2ce63a730d6d98d43dd);
+        if (getCodeSize(0xc03A2615D5efaf5F49F60B7BB6583eaec212fdf1)>0){ //ropsten testnet
+            OAR = OraclizeAddrResolverI(0xc03A2615D5efaf5F49F60B7BB6583eaec212fdf1);
             return true;
         }
-        if (getCodeSize(0x20e12a1f859b3feae5fb2a0a32c18f5a65555bbf)>0){
-            OAR = OraclizeAddrResolverI(0x20e12a1f859b3feae5fb2a0a32c18f5a65555bbf);
+        if (getCodeSize(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475)>0){ //ethereum-bridge
+            OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
             return true;
         }
-        if (getCodeSize(0x9a1d6e5c6c8d081ac45c6af98b74a42442afba60)>0){
-            OAR = OraclizeAddrResolverI(0x9a1d6e5c6c8d081ac45c6af98b74a42442afba60);
+        if (getCodeSize(0x20e12A1F859B3FeaE5Fb2A0A32C18F5a65555bBF)>0){ //ether.camp ide
+            OAR = OraclizeAddrResolverI(0x20e12A1F859B3FeaE5Fb2A0A32C18F5a65555bBF);
+            return true;
+        }
+        if (getCodeSize(0x51efaF4c8B3C9AfBD5aB9F4bbC82784Ab6ef8fAA)>0){ //browser-solidity
+            OAR = OraclizeAddrResolverI(0x51efaF4c8B3C9AfBD5aB9F4bbC82784Ab6ef8fAA);
             return true;
         }
         return false;
+    }
+    
+    function __callback(bytes32 myid, string result) {
+        __callback(myid, result, new bytes(0));
+    }
+    function __callback(bytes32 myid, string result, bytes proof) {
+    }
+    
+    function oraclize_getPrice(string datasource) oraclizeAPI internal returns (uint){
+        return oraclize.getPrice(datasource);
+    }
+    function oraclize_getPrice(string datasource, uint gaslimit) oraclizeAPI internal returns (uint){
+        return oraclize.getPrice(datasource, gaslimit);
     }
     
     function oraclize_query(string datasource, string arg) oraclizeAPI internal returns (bytes32 id){
@@ -141,8 +159,8 @@ contract usingOraclize {
     function oraclize_setCustomGasPrice(uint gasPrice) oraclizeAPI internal {
         return oraclize.setCustomGasPrice(gasPrice);
     }    
-    function oraclize_setConfig(bytes config) oraclizeAPI internal {
-        //return oraclize.setConfig(config);
+    function oraclize_setConfig(bytes32 config) oraclizeAPI internal {
+        return oraclize.setConfig(config);
     }
 
     function getCodeSize(address _addr) constant internal returns(uint _size) {
@@ -269,6 +287,24 @@ contract usingOraclize {
         if (_b > 0) mint *= 10**_b;
         return mint;
     }
+    
+    function uint2str(uint i) internal returns (string){
+        if (i == 0) return "0";
+        uint j = i;
+        uint len;
+        while (j != 0){
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint k = len - 1;
+        while (i != 0){
+            bstr[k--] = byte(48 + i % 10);
+            i /= 10;
+        }
+        return string(bstr);
+    }
+    
     
 
 }
