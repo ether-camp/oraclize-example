@@ -1,3 +1,5 @@
+More examples from Oraclize: https://github.com/oraclize/ethereum-studio-examples
+
 # Oraclize Example App
 
 That's a sample application to demonstrate working with Oraclize in Ethereum Studio.
